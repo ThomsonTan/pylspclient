@@ -1,7 +1,7 @@
 import pylspclient
 import subprocess
 import threading
-
+import time
 
 # In order to run this example, you need to have python-language-server module installed.
 # See more information on the project page: https://github.com/palantir/python-language-server
@@ -19,14 +19,13 @@ class ReadPipe(threading.Thread):
             line = self.pipe.readline().decode('utf-8')
 
 if __name__ == "__main__":
-    pyls_cmd = ["python", "-m", "pyls"]
+    pyls_cmd = ['C:/gh/tools/gopls/gopls.exe', '-vv'] # ["python", "-m", "pyls"]
     p = subprocess.Popen(pyls_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     read_pipe = ReadPipe(p.stderr)
     read_pipe.start()
     json_rpc_endpoint = pylspclient.JsonRpcEndpoint(p.stdin, p.stdout)
     # To work with socket: sock_fd = sock.makefile()
     lsp_endpoint = pylspclient.LspEndpoint(json_rpc_endpoint)
-
     lsp_client = pylspclient.LspClient(lsp_endpoint)
     capabilities = {'textDocument': {'codeAction': {'dynamicRegistration': True},
     'codeLens': {'dynamicRegistration': True},
@@ -140,10 +139,34 @@ if __name__ == "__main__":
         25,
         26]}},'workspaceEdit': {'documentChanges': True},
     'workspaceFolders': True}}
-    root_uri = 'file:///path/to/python/project'
-    workspace_folders = [{'name': 'python-lsp', 'uri': root_uri}]
+    root_uri = 'file:///c:/gh/tools/'
+    workspace_folders = [{'name': 'go-lsp', 'uri': root_uri}]
     print(lsp_client.initialize(p.pid, None, root_uri, None, capabilities, "off", workspace_folders))
     print(lsp_client.initialized())
+
+    file_path = "c:/gh/tools/gopls/main.go"
+    uri = "file:///" + file_path
+    text = open(file_path, "rb").read().decode('utf-8')
+    languageId = pylspclient.lsp_structs.LANGUAGE_IDENTIFIER.GO
+    version = 1
+    lsp_client.didOpen(pylspclient.lsp_structs.TextDocumentItem(uri, languageId, version, text))
+    time.sleep(10)
+    try:
+        symbols = lsp_client.documentSymbol(pylspclient.lsp_structs.TextDocumentIdentifier(uri))
+        for symbol in symbols:
+            print(symbol.name)
+    except pylspclient.lsp_structs.ResponseError:
+        # documentSymbol is supported from version 8.
+        print("Failed to document symbols")
+
+    time.sleep(20)
+    lsp_client.definition(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(28, 10))
+    # lsp_client.signatureHelp(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(14, 4))
+    # lsp_client.definition(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(14, 4))
+    # lsp_client.completion(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(14, 4), pylspclient.lsp_structs.CompletionContext(pylspclient.lsp_structs.CompletionTriggerKind.Invoked))
+
+    time.sleep(1000)
+
 
     lsp_client.shutdown()
     lsp_client.exit()

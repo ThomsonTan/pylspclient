@@ -5,7 +5,7 @@ from pylspclient import lsp_structs
 
 
 class LspEndpoint(threading.Thread):
-    def __init__(self, json_rpc_endpoint, method_callbacks={}, notify_callbacks={}, timeout=2):
+    def __init__(self, json_rpc_endpoint, method_callbacks={}, notify_callbacks={}, timeout=20000):
         threading.Thread.__init__(self)
         self.json_rpc_endpoint = json_rpc_endpoint
         self.notify_callbacks = notify_callbacks
@@ -33,6 +33,7 @@ class LspEndpoint(threading.Thread):
         while not self.shutdown_flag:
             try:
                 jsonrpc_message = self.json_rpc_endpoint.recv_response()
+                # print(jsonrpc_message)
                 if jsonrpc_message is None:
                     print("server quit")
                     break
@@ -45,8 +46,13 @@ class LspEndpoint(threading.Thread):
                 if method:
                     if rpc_id:
                         # a call for method
+                        if method == 'window/showMessage':
+                            continue
                         if method not in self.method_callbacks:
-                            raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.MethodNotFound, "Method not found: {method}".format(method=method))
+                            print("Ignore: " + method)
+                            self.send_response(rpc_id, None, None)
+                            continue
+                            # raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.MethodNotFound, "Method not found: {method}".format(method=method))
                         result = self.method_callbacks[method](params)
                         self.send_response(rpc_id, result, None)
                     else:
@@ -54,6 +60,7 @@ class LspEndpoint(threading.Thread):
                         if method not in self.notify_callbacks:
                             # Have nothing to do with this.
                             print("Notify method not found: {method}.".format(method=method))
+                            print(jsonrpc_message)
                         else:
                             self.notify_callbacks[method](params)
                 else:

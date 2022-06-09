@@ -3,6 +3,7 @@ import json
 import re
 from pylspclient import lsp_structs
 import threading
+import traceback
 
 JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
 LEN_HEADER = "Content-Length: "
@@ -50,6 +51,10 @@ class JsonRpcEndpoint(object):
         '''
         json_string = json.dumps(message, cls=MyEncoder)
         jsonrpc_req = self.__add_header(json_string)
+        print("\n--------------------------------------------------------------------------------")
+        # print(message["method"])
+        print(jsonrpc_req)
+        print("================================================================================")
         with self.write_lock:
             self.stdin.write(jsonrpc_req.encode())
             self.stdin.flush()
@@ -86,6 +91,7 @@ class JsonRpcEndpoint(object):
                     # nothing todo with type for now.
                     pass
                 else:
+                    print(line)
                     raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: unkown header")
             if not message_size:
                 raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: missing size")
